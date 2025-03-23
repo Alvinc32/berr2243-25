@@ -1,0 +1,23 @@
+{
+  "name": "berr2243",
+  "version": "1.0.0",
+  "description": "cccc",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Alvinc32/berr2243-25.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Alvinc32/berr2243-25/issues"
+  },
+  "homepage": "https://github.com/Alvinc32/berr2243-25#readme",
+  "dependencies": {
+    "mongodb": "^6.15.0"
+  }
+}
