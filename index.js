@@ -58,11 +58,11 @@ async function updateDriver() {
         const db = client.db("rideSharing");
         const collection = db.collection("drivers");
 
-        const result = await collection.updateOne(
-            { name: "Alvinc " },
+        const result = await collection.updateMany(
+            { rating: { $gte: 4.5 } },
             { $inc: { rating: 0.1 } }
         );
-        console.log("Updated Document:", result.modifiedCount);
+        console.log("Updated Documents:", result.modifiedCount);        
     } catch (error) {
         console.error("Error:", error);
     } finally {
