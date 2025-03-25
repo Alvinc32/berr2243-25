@@ -1,35 +1,93 @@
 const { MongoClient } = require("mongodb");
 
-// MongoDB connection URL (update if needed)
-const uri = "mongodb://localhost:27017"; // Use your actual MongoDB connection string
+const drivers = [
+    { name: "Alvinc ",
+     vehicleType: "Sedan", 
+     rating: 4.7, available: true 
+    },
+    {
+     name: "vagesh", 
+     vehicleType: "Suv", 
+     rating: 4.9, available: false
+    },
+    { name: "dharvin", 
+    vehicleType: "Hatchback", 
+    rating: 4.2, available: true }
+];
 
-// Create a new MongoDB client
-const client = new MongoClient(uri);
+console.log(drivers);
+drivers.push(
+    { 
+    name: "dHARVIN 2",
+    vehicleType: "Sedan",
+    rating: 4.8, available: true });
+console.log("Updated Drivers:", drivers);
+drivers.forEach(driver => {
+    console.log(`Driver Name: ${driver.name}`);
+});
 
 async function main() {
+    const uri = "mongodb://localhost:27017";  
+    const client = new MongoClient(uri);
+
     try {
-        // Connect to MongoDB
         await client.connect();
         console.log("Connected to MongoDB!");
 
-        // Select database and collection
-        const db = client.db("testDB");
-        const collection = db.collection("users");
-
-        // Insert a document
-        const result = await collection.insertOne({ name: "Alvinc", age: 22 });
-        console.log(`Document inserted with _id: ${result.insertedId}`);
-
-        // Read the document
-        const document = await collection.findOne({ _id: result.insertedId });
-        console.log("Fetched Document:", document);
+        const db = client.db("rideSharing");
+        const collection = db.collection("drivers");
+        
+        const result = await collection.insertMany(drivers);
+        console.log(`Inserted ${result.insertedCount} drivers`);
+        
+        const topDrivers = await collection.find({ rating: { $gte: 4.5 } }).toArray();
+        console.log("Top Drivers:", topDrivers);
     } catch (error) {
         console.error("Error:", error);
     } finally {
-        // Close connection
         await client.close();
     }
 }
 
-// Run the function
-main();
+async function updateDriver() {
+    const uri = "mongodb://localhost:27017";  
+    const client = new MongoClient(uri);
+
+    try {
+        await client.connect();
+        const db = client.db("rideSharing");
+        const collection = db.collection("drivers");
+
+        const result = await collection.updateOne(
+            { name: "Alvinc " },
+            { $inc: { rating: 0.1 } }
+        );
+        console.log("Updated Document:", result.modifiedCount);
+    } catch (error) {
+        console.error("Error:", error);
+    } finally {
+        await client.close();
+    }
+}
+async function removeUnavailableDrivers() {
+    const uri = "mongodb://localhost:27017";  
+    const client = new MongoClient(uri);
+    try {
+        await client.connect();
+        const db = client.db("rideSharing");
+        const collection = db.collection("drivers");
+
+        const result = await collection.deleteMany({ available: false });
+        console.log("Deleted Documents:", result.deletedCount);
+    } finally {
+        await client.close();
+    }
+}
+
+async function run() {
+    await main();
+    await updateDriver();
+    await removeUnavailableDrivers();
+}
+
+run();
