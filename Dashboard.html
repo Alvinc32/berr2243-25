@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ride Management Dashboard</title>
+  <style>
+    :root {
+      --primary-color: #2563eb;
+      --secondary-color: #3b82f6;
+      --admin-color: #4f46e5;
+      --background: #f8fafc;
+      --text-color: #1e293b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body {
+      background-color: var(--background);
+      color: var(--text-color);
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .form-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    input, select {
+      padding: 0.8rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    button {
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 0.8rem 1.5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background: var(--secondary-color);
+    }
+
+    button.admin {
+      background: var(--admin-color);
+    }
+
+    button.danger {
+      background: #dc2626;
+    }
+
+    .rides-table, .users-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .rides-table th, .rides-table td,
+    .users-table th, .users-table td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .rides-table th {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .users-table th {
+      background: var(--admin-color);
+      color: white;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+    }
+
+    .status.active {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status.completed {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .driver-status {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 12px;
+      font-size: 0.8rem;
+    }
+
+    .driver-status.online {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .driver-status.offline {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 1rem 2rem;
+      background: var(--primary-color);
+      color: white;
+      border-radius: 6px;
+      display: none;
+      z-index: 1000;
+    }
+
+    small {
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚖 Ride Management Dashboard</h1>
+      <p>Manage all ride requests and driver assignments</p>
+    </div>
+
+    <!-- Auth Section -->
+    <div class="card">
+      <h2>👤 User Authentication</h2>
+      <form id="authForm">
+        <div class="form-group">
+          <input type="text" id="authUsername" placeholder="Username" required />
+          <input type="password" id="authPassword" placeholder="Password" required />
+          <select id="authRole">
+            <option value="passenger">Passenger</option>
+            <option value="driver">Driver</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <button type="button" onclick="registerUser()">Register</button>
+          <button type="button" onclick="loginUser()">Login</button>
+        </div>
+      </form>
+      <div id="userInfo" style="margin-top: 1rem;"></div>
+    </div>
+
+    <!-- Driver Availability -->
+    <div id="driverAvailability" class="card" style="display: none;">
+      <h2>🚦 Driver Status</h2>
+      <div class="form-group">
+        <select id="availabilitySelect">
+          <option value="online">Online</option>
+          <option value="offline">Offline</option>
+        </select>
+        <button onclick="updateDriverStatus()">Update Status</button>
+      </div>
+    </div>
+
+    <!-- Ride Creation -->
+    <div class="card">
+      <h2>➕ Create New Ride</h2>
+      <form id="createRideForm">
+        <div class="form-group">
+          <input type="text" id="driver" placeholder="Driver Name" required />
+          <input type="text" id="passenger" placeholder="Passenger Name" required />
+          <input type="text" id="pickup" placeholder="Pickup Location" required />
+          <input type="text" id="destination" placeholder="Destination" required />
+        </div>
+        <button type="submit">Create New Ride</button>
+      </form>
+    </div>
+
+    <!-- Rides Table -->
+    <div class="card">
+      <h2>📋 Active Rides</h2>
+      <div class="table-container">
+        <table class="rides-table">
+          <thead>
+            <tr>
+              <th>Driver</th>
+              <th>Passenger</th>
+              <th>Pickup</th>
+              <th>Destination</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ridesBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Admin Tools -->
+    <div id="adminTools" class="card" style="display: none;">
+      <h2>🛠️ Admin Tools</h2>
+      <h3>Manage Users</h3>
+      <div class="table-container">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:3000';
+    const toast = document.getElementById('toast');
+
+    let currentUserId = null;
+    let currentUserRole = null;
+    let currentUsername = null;
+
+    function showToast(message, duration = 3000) {
+      toast.textContent = message;
+      toast.style.display = 'block';
+      setTimeout(() => (toast.style.display = 'none'), duration);
+    }
+
+    // Ride Management Functions
+    async function fetchRides() {
+      try {
+        const response = await fetch(`${API_URL}/rides`);
+        if (!response.ok) throw new Error('Failed to fetch rides');
+        const rides = await response.json();
+        // Ensure all rides have both _id and id properties
+        return rides.map(ride => ({
+          ...ride,
+          id: ride._id ? ride._id.toString() : ride.id
+        }));
+      } catch (error) {
+        showToast(`Error: ${error.message}`);
+        return [];
+      }
+    }
+
+    async function renderRides() {
+      const rides = await fetchRides();
+      const tbody = document.getElementById('ridesBody');
+
+      tbody.innerHTML = rides.map(ride => {
+        const rideId = ride.id || ride._id; // Use whichever is available
+        return `
+        <tr>
+          <td>
+            ${ride.driver}
+            <br>
+            <small>Status: <span class="driver-status ${ride.driverStatus || 'offline'}">${ride.driverStatus || 'offline'}</span></small>
+          </td>
+          <td>${ride.passenger}</td>
+          <td>${ride.pickup}</td>
+          <td>${ride.destination}</td>
+          <td><span class="status ${ride.status}">${ride.status}</span></td>
+          <td>
+            <div class="actions">
+              ${ride.status !== 'completed' ? 
+                `<button onclick="completeRide('${rideId}')">✅ Complete</button>` : ''}
+              <button class="danger" onclick="deleteRide('${rideId}')">❌ Delete</button>
+            </div>
+          </td>
+        </tr>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('createRideForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const rideData = {
+        driver: document.getElementById('driver').value,
+        passenger: document.getElementById('passenger').value,
+        pickup: document.getElementById('pickup').value,
+        destination: document.getElementById('destination').value,
+        status: 'active'
+      };
+
+      try {
+        const response = await fetch(`${API_URL}/rides`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rideData)
+        });
+
+        if (response.ok) {
+          e.target.reset();
+          showToast('Ride created successfully!');
+          renderRides();
+        } else {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to create ride');
+        }
+      } catch (error) {
+        showToast(`Error: ${error.message}`);
+      }
+    });
+
+    // Function to complete a ride
+    async function completeRide(rideId) {
+      if (!rideId || rideId === 'undefined') {
+        showToast('Error: Invalid ride ID');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/rides/${rideId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'completed' })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to complete ride');
+        }
+
+        showToast('Ride completed successfully!');
+        renderRides();
+      } catch (error) {
+        console.error('Complete ride error:', error);
+        showToast(`Error: ${error.message}`);
+      }
+    }
+
+    // Function to delete a ride
+    async function deleteRide(rideId) {
+      if (!rideId || rideId === 'undefined') {
+        showToast('Error: Invalid ride ID');
+        return;
+      }
+
+      if (!confirm('Are you sure you want to delete this ride?')) return;
+
+      try {
+        const response = await fetch(`${API_URL}/rides/${rideId}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to delete ride');
+        }
+
+        showToast('Ride deleted successfully!');
+        renderRides();
+      } catch (error) {
+        console.error('Delete ride error:', error);
+        showToast(`Error: ${error.message}`);
+      }
+    }
+
+    // [Rest of your existing functions remain unchanged]
+    // User Authentication Functions
+    async function registerUser() {
+      const username = document.getElementById('authUsername').value;
+      const password = document.getElementById('authPassword').value;
+      const role = document.getElementById('authRole').value;
+
+      try {
+        const res = await fetch(`${API_URL}/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, role })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast("User registered successfully!");
+        } else {
+          showToast(data.error || "Registration failed");
+        }
+      } catch (err) {
+        showToast("Error registering user");
+      }
+    }
+
+    async function loginUser() {
+      const username = document.getElementById('authUsername').value;
+      const password = document.getElementById('authPassword').value;
+
+      try {
+        const res = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          currentUserId = data.userId;
+          currentUserRole = data.role || document.getElementById('authRole').value;
+          currentUsername = username;
+          
+          document.getElementById('userInfo').innerHTML = `
+            <strong>Logged in as:</strong> ${username} (${currentUserRole})
+          `;
+
+          if (currentUserRole === "driver") {
+            showDriverAvailabilityUI();
+            loadDriverStatus();
+          }
+          
+          if (currentUserRole === "admin") {
+            showAdminTools();
+            loadAllUsers();
+          }
+
+          showToast("Login successful!");
+        } else {
+          showToast(data.error || "Login failed");
+        }
+      } catch (err) {
+        showToast("Login error");
+      }
+    }
+
+    function showDriverAvailabilityUI() {
+      document.getElementById('driverAvailability').style.display = 'block';
+    }
+
+    async function loadDriverStatus() {
+      try {
+        const res = await fetch(`${API_URL}/users/${currentUserId}`);
+        if (res.ok) {
+          const driver = await res.json();
+          document.getElementById('availabilitySelect').value = driver.availability || 'offline';
+        }
+      } catch (err) {
+        console.error("Failed to load driver status:", err);
+      }
+    }
+
+    async function updateDriverStatus() {
+      const availability = document.getElementById('availabilitySelect').value;
+
+      try {
+        const res = await fetch(`${API_URL}/drivers/${currentUserId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ availability })
+        });
+
+        if (res.ok) {
+          showToast(`Driver is now ${availability}`);
+          renderRides();
+        } else {
+          const data = await res.json();
+          showToast(data.error || "Failed to update status");
+        }
+      } catch (err) {
+        showToast("Error updating status");
+      }
+    }
+
+    function showAdminTools() {
+      document.getElementById('adminTools').style.display = 'block';
+    }
+
+    async function loadAllUsers() {
+      try {
+        const res = await fetch(`${API_URL}/users`);
+        const users = await res.json();
+        const tbody = document.getElementById('usersBody');
+
+        tbody.innerHTML = users.map(user => `
+          <tr>
+            <td>${user.username}</td>
+            <td>${user.role}</td>
+            <td>
+              ${user.role === 'driver' ? 
+                `<span class="driver-status ${user.availability || 'offline'}">${user.availability || 'offline'}</span>` : 
+                'N/A'}
+            </td>
+            <td>
+              <div class="actions">
+                ${user._id !== currentUserId ? 
+                  `<button class="danger" onclick="deleteUser('${user._id}')">Delete User</button>` : 
+                  '<small>(Current user)</small>'}
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        showToast("Failed to load users");
+      }
+    }
+
+    async function deleteUser(userId) {
+      if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+        try {
+          const res = await fetch(`${API_URL}/admin/users/${userId}`, {
+            method: 'DELETE'
+          });
+
+          if (res.ok) {
+            showToast('User deleted successfully');
+            loadAllUsers();
+          } else {
+            const data = await res.json();
+            showToast(data.error || "Failed to delete user");
+          }
+        } catch (err) {
+          showToast("Error deleting user");
+        }
+      }
+    }
+
+    // Initial load
+    document.addEventListener('DOMContentLoaded', () => {
+      renderRides();
+      setInterval(renderRides, 5000);
+    });
+  </script>
+</body>
+</html>
