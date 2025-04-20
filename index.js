@@ -433,8 +433,6 @@ app.delete('/admin/users/:id', async (req, res) => {
             return res.status(400).json({ error: "Invalid user ID format" });
         }
 
-        // In a real app, you would verify admin privileges here
-        // For example: check req.headers.authorization for a valid admin token
 
         const result = await db.collection('users').deleteOne(
             { _id: new ObjectId(req.params.id) }
