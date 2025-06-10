@@ -163,6 +163,7 @@
       color: #64748b;
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="container">
@@ -171,22 +172,22 @@
       <p>Manage all ride requests and driver assignments</p>
     </div>
 
-    <!-- Auth Section -->
-    <div class="card">
-      <h2>👤 User Authentication</h2>
-      <form id="authForm">
-        <div class="form-group">
-          <input type="text" id="authUsername" placeholder="Username" required />
-          <input type="password" id="authPassword" placeholder="Password" required />
-          <select id="authRole">
-            <option value="passenger">Passenger</option>
-            <option value="driver">Driver</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <button type="button" onclick="registerUser()">Register</button>
-          <button type="button" onclick="loginUser()">Login</button>
+   <!-- Auth Section -->
+<div class="card">
+  <h2>👤 User Authentication</h2>
+  <form id="authForm">
+    <div class="form-group">
+      <input type="text" id="authUsername" placeholder="Username" required />
+      <input type="password" id="authPassword" placeholder="Password" required />
+      <select id="authRole">
+        <option value="passenger">Passenger</option>
+        <option value="driver">Driver</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <button type="button" onclick="registerUser()">Register</button>
+      <button type="button" onclick="loginUser()">Login</button>
         </div>
       </form>
       <div id="userInfo" style="margin-top: 1rem;"></div>
@@ -208,14 +209,16 @@
     <div class="card">
       <h2>➕ Create New Ride</h2>
       <form id="createRideForm">
-        <div class="form-group">
-          <input type="text" id="driver" placeholder="Driver Name" required />
-          <input type="text" id="passenger" placeholder="Passenger Name" required />
-          <input type="text" id="pickup" placeholder="Pickup Location" required />
-          <input type="text" id="destination" placeholder="Destination" required />
-        </div>
-        <button type="submit">Create New Ride</button>
-      </form>
+     <div class="form-group">
+    <input type="text" id="driver" placeholder="Driver Name" required />
+    <input type="text" id="passenger" placeholder="Passenger Name" required />
+    <input type="text" id="pickup" placeholder="Pickup Location" required />
+    <input type="text" id="destination" placeholder="Destination" required />
+    <input type="number" id="distance" placeholder="Distance (KM)" required min="1" />
+  </div>
+  <button type="submit">Create New Ride</button>
+</form>
+
     </div>
 
     <!-- Rides Table -->
@@ -259,6 +262,39 @@
 
     <div id="toast" class="toast"></div>
   </div>
+
+<!-- Passenger Analytics Section -->
+<div id="analyticsSection" class="card" style="display: none;">
+  <h2>📊 Passenger Analytics</h2>
+
+  <!-- Fare Chart -->
+  <div class="card">
+    <h3>📈 Fare Distribution by Passenger</h3>
+    <canvas id="fareChart" height="100"></canvas>
+  </div>
+
+  <!-- Ride Count Chart -->
+  <div class="card">
+    <h3>🧾 Total Rides by Passenger</h3>
+    <canvas id="rideCountChart" height="100"></canvas>
+  </div>
+
+  <!-- Analytics Table -->
+  <div class="table-container" style="margin-top: 2rem;">
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>Passenger</th>
+          <th>Total Rides</th>
+          <th>Total Fare (RM)</th>
+          <th>Avg Distance (KM)</th>
+        </tr>
+      </thead>
+      <tbody id="analyticsBody"></tbody>
+    </table>
+  </div>
+</div>
+
 
   <script>
     const API_URL = 'http://localhost:3000';
@@ -321,34 +357,40 @@
     }
 
     document.getElementById('createRideForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const rideData = {
-        driver: document.getElementById('driver').value,
-        passenger: document.getElementById('passenger').value,
-        pickup: document.getElementById('pickup').value,
-        destination: document.getElementById('destination').value,
-        status: 'active'
-      };
+   e.preventDefault();
+    const distance = parseFloat(document.getElementById('distance').value);
+   const fare = distance * 1.5; // Example: RM1.50 per km
 
-      try {
-        const response = await fetch(`${API_URL}/rides`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(rideData)
-        });
+  const rideData = {
+    driver: document.getElementById('driver').value,
+    passenger: document.getElementById('passenger').value,
+    pickup: document.getElementById('pickup').value,
+    destination: document.getElementById('destination').value,
+    distance: distance,
+    fare: fare,
+    status: 'active'
+  };
 
-        if (response.ok) {
-          e.target.reset();
-          showToast('Ride created successfully!');
-          renderRides();
-        } else {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to create ride');
-        }
-      } catch (error) {
-        showToast(`Error: ${error.message}`);
-      }
+  try {
+    const response = await fetch(`${API_URL}/rides`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rideData)
     });
+
+    if (response.ok) {
+      e.target.reset();
+      showToast('Ride created successfully!');
+      renderRides();
+    } else {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create ride');
+    }
+  } catch (error) {
+    showToast(`Error: ${error.message}`);
+  }
+});
+
 
     // Function to complete a ride
     async function completeRide(rideId) {
@@ -455,8 +497,11 @@
           if (currentUserRole === "admin") {
             showAdminTools();
             loadAllUsers();
+            document.getElementById('analyticsSection').style.display = 'block';
+            loadPassengerAnalytics();
           }
-
+          document.getElementById('analyticsSection').style.display = 'block';
+          loadPassengerAnalytics();
           showToast("Login successful!");
         } else {
           showToast(data.error || "Login failed");
@@ -562,6 +607,75 @@
       renderRides();
       setInterval(renderRides, 5000);
     });
+    async function loadPassengerAnalytics() {
+  try {
+    const res = await fetch(`${API_URL}/analytics/passengers`);
+    const data = await res.json();
+
+    // Populate table
+    const tableBody = document.getElementById('analyticsBody');
+    tableBody.innerHTML = data.map(row => `
+      <tr>
+        <td>${row.name}</td>
+        <td>${row.totalRides}</td>
+        <td>RM ${row.totalFare.toFixed(2)}</td>
+        <td>${row.avgDistance.toFixed(2)} KM</td>
+      </tr>
+    `).join('');
+
+    // Fare Chart
+    const fareCtx = document.getElementById('fareChart').getContext('2d');
+    window.fareChart = new Chart(fareCtx, {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.name),
+        datasets: [{
+          label: 'Total Fare (RM)',
+          data: data.map(d => d.totalFare),
+          backgroundColor: '#3b82f6'
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Fare Distribution by Passenger'
+          }
+        }
+      }
+    });
+
+    // Ride Count Chart
+    const rideCtx = document.getElementById('rideCountChart').getContext('2d');
+    if (window.rideCountChart) window.rideCountChart.destroy();
+    window.rideCountChart = new Chart(rideCtx, {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.name),
+        datasets: [{
+          label: 'Total Rides',
+          data: data.map(d => d.totalRides),
+          backgroundColor: '#10b981'
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Total Rides by Passenger'
+          }
+        }
+      }
+    });
+
+  } catch (err) {
+    showToast("Failed to load passenger analytics");
+    console.error(err);
+  }
+}
+
   </script>
 </body>
 </html>

@@ -185,47 +185,6 @@ app.delete('/admin/users/:id', authenticate, authorize(['admin']), async (req, r
 
 // --- AUTH ROUTE ---
 
-// User login, return JWT token
-app.post('/auth/login', async (req, res) => {
-    const { username, password } = req.body;
-  
-    if (!username || !password) {
-      return res.status(400).json({ error: "Username and password are required" });
-    }
-  
-    try {
-      const user = await db.collection('users').findOne({ username });
-  
-      if (!user || !(await bcrypt.compare(password, user.password))) {
-        return res.status(401).json({ error: "Invalid credentials" });
-      }
-  
-      // Role check: only allow admin users to log in
-      if (user.role !== 'admin, driver' ) {
-        return res.status(403).json({ error: "Access denied: only admins can log in" });
-      }
-  
-      const token = jwt.sign(
-        { userId: user._id.toString(), role: user.role },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
-      );
-  
-      res.status(200).json({
-        message: "Login successful",
-        token,
-        username: user.username,
-        role: user.role
-      });
-    } catch (err) {
-      console.error("Login error:", err);
-      res.status(500).json({ error: "Server error during login", details: err.message });
-    }
-  });
-  
-
-// --- RIDES ROUTES ---
-
 // Get all rides with driver info
 app.get('/rides', async (req, res) => {
     try {
@@ -254,13 +213,13 @@ app.get('/rides', async (req, res) => {
     }
 });
 
-// Create a new ride with validation
+// Create a new ride with validation and auto fare calculation
 app.post('/rides', async (req, res) => {
     try {
-        const { driver, passenger, pickup, destination } = req.body;
+        const { driver, passenger, pickup, destination, distance } = req.body;
 
-        if (!driver || !passenger || !pickup || !destination) {
-            return res.status(400).json({ error: "Missing required fields" });
+        if (!driver || !passenger || !pickup || !destination || typeof distance !== 'number') {
+            return res.status(400).json({ error: "Missing or invalid required fields" });
         }
 
         const driverExists = await db.collection('users').findOne({ username: driver, role: "driver" });
@@ -268,11 +227,19 @@ app.post('/rides', async (req, res) => {
             return res.status(400).json({ error: "Driver not found" });
         }
 
+        // Fare calculation logic
+        let fare = 5;
+        if (distance > 5) {
+            fare += Math.ceil(distance - 5); // RM1 per extra km
+        }
+
         const rideData = {
             driver,
             passenger,
             pickup,
             destination,
+            distance,
+            fare: parseFloat(fare.toFixed(2)),
             status: "active",
             createdAt: new Date()
         };
@@ -372,15 +339,15 @@ app.delete('/rides/:id', async (req, res) => {
 });
 // POST /auth/login - Authenticate user and return JWT token
 app.post('/auth/login', async (req, res) => {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
     // Validate input
-    if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required" });
+    if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required" });
     }
 
     try {
-        const user = await db.collection('users').findOne({ email });
+        const user = await db.collection('users').findOne({ username });
 
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ error: "Invalid credentials" });
@@ -398,15 +365,15 @@ app.post('/auth/login', async (req, res) => {
             user: {
                 id: user._id.toString(),
                 username: user.username,
-                email: user.email,
                 role: user.role
             }
         });
     } catch (err) {
         console.error("Login error:", err);
-        res.status(500).json({ error: "Server error during login" });
+        res.status(500).json({ error: "Server error during login", details: err.message });
     }
 });
+
 //PATCH /drivers/:id/status - Update driver availability
 app.patch('/drivers/:id/status', async (req, res) => {
     try {
@@ -479,5 +446,68 @@ app.delete('/admin/users/:id', async (req, res) => {
     } catch (err) {
         console.error("Admin user deletion error:", err);
         res.status(500).json({ error: "Failed to delete user", details: err.message });
+    }
+});
+
+// GET /analytics/passengers - Aggregation of passenger ride statistics
+app.get('/analytics/passengers',async (req, res) => {
+    try {
+        const pipeline = [
+            { $match: { role: "passenger" } },
+            {
+                $lookup: {
+                    from: "rides",
+                    localField: "username",
+                    foreignField: "passenger",
+                    as: "rides"
+                }
+            },
+            {
+                $unwind: {
+                    path: "$rides",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $group: {
+                    _id: "$username",
+                    totalRides: {
+                        $sum: { $cond: [{ $ifNull: ["$rides", false] }, 1, 0] }
+                    },
+                    totalFare: { $sum: { $ifNull: ["$rides.fare", 0] } },
+                    totalDistance: { $sum: { $ifNull: ["$rides.distance", 0] } }
+                }
+            },
+            {
+                $addFields: {
+                    avgDistance: {
+                        $cond: [
+                            { $eq: ["$totalRides", 0] },
+                            0,
+                            { $divide: ["$totalDistance", "$totalRides"] }
+                        ]
+                    }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    name: "$_id",
+                    totalRides: 1,
+                    totalFare: { $round: ["$totalFare", 2] },
+                    avgDistance: { $round: ["$avgDistance", 2] }
+                }
+            },
+            { $sort: { name: 1 } }
+        ];
+
+        const results = await db.collection('users').aggregate(pipeline).toArray();
+        res.status(200).json(results);
+    } catch (err) {
+        console.error("Aggregation error:", err);
+        res.status(500).json({ 
+            error: "Failed to perform aggregation", 
+            details: process.env.NODE_ENV === 'development' ? err.message : undefined 
+        });
     }
 });
