@@ -448,7 +448,24 @@ app.delete('/admin/users/:id', async (req, res) => {
         res.status(500).json({ error: "Failed to delete user", details: err.message });
     }
 });
+app.get('/admin/users', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const users = await db.collection('users').find().toArray();
 
+        const formattedUsers = users.map(user => ({
+            id: user._id.toString(),
+            username: user.username,
+            role: user.role,
+            availability: user.availability || undefined,
+            createdAt: user.createdAt
+        }));
+
+        res.status(200).json(formattedUsers);
+    } catch (err) {
+        console.error("Admin fetch error:", err);
+        res.status(500).json({ error: "Failed to fetch users", details: err.message });
+    }
+});
 // GET /analytics/passengers - Aggregation of passenger ride statistics
 app.get('/analytics/passengers',async (req, res) => {
     try {
