@@ -1,29 +1,14 @@
 {
-  "name": "berr2243",
+  "name": "my-taxi-backend",
   "version": "1.0.0",
-  "description": "cccc",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Alvinc32/berr2243-25.git"
-  },
-  "keywords": [],
-  "author": "Alvinc",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Alvinc32/berr2243-25/issues"
-  },
-  "homepage": "https://github.com/Alvinc32/berr2243-25#readme",
   "dependencies": {
-    "bcrypt": "^6.0.0",
+    "express": "^4.18.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.5.0",
-    "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "mongodb": "^6.15.0"
-  },
-  "devDependencies": {}
+    "mongodb": "^6.8.0",
+    "bcrypt": "^5.1.1"
+  }
 }
