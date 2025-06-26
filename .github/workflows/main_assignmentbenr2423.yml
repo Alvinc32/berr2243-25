@@ -25,8 +25,8 @@ jobs:
           npm install
           ls -la  # Debug: List files to verify contents
 
-      - name: Zip artifact for deployment
-        run: zip release.zip server.js package.json node_modules/ -r  # Ensure all needed files
+      - - name: Zip artifact for deployment
+  run: zip release.zip . -r -x ".git/*" ".github/*" "node_modules/*"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
