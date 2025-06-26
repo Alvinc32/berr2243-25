@@ -4,7 +4,6 @@ const { MongoClient, ObjectId } = require('mongodb');
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 require('dotenv').config();
-const jwt = require('jsonwebtoken');
 
 const app = express();
 const port = 3000;
@@ -15,7 +14,7 @@ app.use(express.json());
 // Database connection
 let db;
 async function connectToMongoDB() {
-    const uri = "mongodb://localhost:27017";
+    const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
     const client = new MongoClient(uri);
 
     try {
@@ -33,36 +32,9 @@ async function connectToMongoDB() {
 }
 connectToMongoDB();
 
-// Middleware: Authenticate JWT
-const authenticate = (req, res, next) => {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return res.status(401).json({ error: "Missing or invalid Authorization header" });
-    }
-
-    const token = authHeader.split(' ')[1];
-
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded; // Contains userId and role
-        next();
-    } catch (err) {
-        return res.status(401).json({ error: "Invalid or expired token" });
-    }
-};
-
-// Middleware: Authorize by role(s)
-const authorize = (roles) => (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-        return res.status(403).json({ error: "Forbidden: Insufficient role" });
-    }
-    next();
-};
-
 // --- USER ROUTES ---
 
-// Create a new user (register) with validation and password hashing
+// Create a new user (register)
 app.post('/users', async (req, res) => {
     const { username, password, role } = req.body;
 
@@ -99,7 +71,8 @@ app.post('/users', async (req, res) => {
         res.status(201).json({
             id: result.insertedId.toString(),
             username,
-            role
+            role,
+            availability: userData.availability || undefined
         });
     } catch (err) {
         console.error("User registration error:", err);
@@ -107,7 +80,7 @@ app.post('/users', async (req, res) => {
     }
 });
 
-// Fetch all users (hide _id field correctly)
+// Fetch all users
 app.get('/users', async (req, res) => {
     try {
         const users = await db.collection('users').find().toArray();
@@ -125,6 +98,31 @@ app.get('/users', async (req, res) => {
     }
 });
 
+// Fetch a single user
+app.get('/users/:id', async (req, res) => {
+    try {
+        if (!ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ error: "Invalid user ID format" });
+        }
+
+        const user = await db.collection('users').findOne({ _id: new ObjectId(req.params.id) });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        res.status(200).json({
+            id: user._id.toString(),
+            username: user.username,
+            role: user.role,
+            availability: user.availability || undefined,
+            createdAt: user.createdAt
+        });
+    } catch (err) {
+        console.error("User fetch error:", err);
+        res.status(500).json({ error: "Failed to fetch user", details: err.message });
+    }
+});
+
 // Update a user partially
 app.patch('/users/:id', async (req, res) => {
     try {
@@ -132,7 +130,6 @@ app.patch('/users/:id', async (req, res) => {
             return res.status(400).json({ error: "Invalid user ID format" });
         }
 
-        // Prevent modifying protected fields
         if (req.body._id || req.body.username || req.body.createdAt || req.body.password) {
             return res.status(400).json({ error: "Cannot modify protected fields" });
         }
@@ -160,8 +157,8 @@ app.patch('/users/:id', async (req, res) => {
     }
 });
 
-// DELETE /admin/users/:id - Admin-only user deletion
-app.delete('/admin/users/:id', authenticate, authorize(['admin']), async (req, res) => {
+// Delete a user (admin)
+app.delete('/admin/users/:id', async (req, res) => {
     try {
         if (!ObjectId.isValid(req.params.id)) {
             return res.status(400).json({ error: "Invalid user ID format" });
@@ -185,6 +182,38 @@ app.delete('/admin/users/:id', authenticate, authorize(['admin']), async (req, r
 
 // --- AUTH ROUTE ---
 
+// Authenticate user
+app.post('/auth/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required" });
+    }
+
+    try {
+        const user = await db.collection('users').findOne({ username });
+
+        if (!user || !(await bcrypt.compare(password, user.password))) {
+            return res.status(401).json({ error: "Invalid credentials" });
+        }
+
+        res.status(200).json({
+            message: "Login successful",
+            user: {
+                id: user._id.toString(),
+                username: user.username,
+                role: user.role,
+                availability: user.availability || undefined
+            }
+        });
+    } catch (err) {
+        console.error("Login error:", err);
+        res.status(500).json({ error: "Server error during login", details: err.message });
+    }
+});
+
+// --- RIDE ROUTES ---
+
 // Get all rides with driver info
 app.get('/rides', async (req, res) => {
     try {
@@ -200,6 +229,8 @@ app.get('/rides', async (req, res) => {
                 pickup: ride.pickup,
                 destination: ride.destination,
                 status: ride.status,
+                fare: ride.fare,
+                distance: ride.distance,
                 createdAt: ride.createdAt,
                 driverId: driver?._id.toString(),
                 driverStatus: driver?.availability || 'offline'
@@ -213,7 +244,7 @@ app.get('/rides', async (req, res) => {
     }
 });
 
-// Create a new ride with validation and auto fare calculation
+// Create a new ride
 app.post('/rides', async (req, res) => {
     try {
         const { driver, passenger, pickup, destination, distance } = req.body;
@@ -227,10 +258,9 @@ app.post('/rides', async (req, res) => {
             return res.status(400).json({ error: "Driver not found" });
         }
 
-        // Fare calculation logic
         let fare = 5;
         if (distance > 5) {
-            fare += Math.ceil(distance - 5); // RM1 per extra km
+            fare += Math.ceil(distance - 5);
         }
 
         const rideData = {
@@ -290,91 +320,18 @@ app.patch('/rides/:id', async (req, res) => {
                 id: updatedRide._id.toString(),
                 status: updatedRide.status,
                 driver: updatedRide.driver,
-                passenger: updatedRide.passenger
+                passenger: updatedRide.passenger,
+                fare: updatedRide.fare,
+                distance: updatedRide.distance
             }
         });
     } catch (err) {
         console.error("Ride status update error:", err);
-        res.status(500).json({
-            error: "Failed to update ride status",
-            details: err.message,
-            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-        });
+        res.status(500).json({ error: "Failed to update ride status", details: err.message });
     }
 });
 
 // Delete a ride
-app.delete('/rides/:id', async (req, res) => {
-    try {
-        if (!ObjectId.isValid(req.params.id)) {
-            return res.status(400).json({ error: "Invalid ride ID format", details: `Received: ${req.params.id}` });
-        }
-
-        const ride = await db.collection('rides').findOne({ _id: new ObjectId(req.params.id) });
-        if (!ride) {
-            return res.status(404).json({ error: "Ride not found", id: req.params.id });
-        }
-
-        const result = await db.collection('rides').deleteOne({ _id: new ObjectId(req.params.id) });
-        if (result.deletedCount === 0) {
-            return res.status(500).json({ error: "Failed to delete ride", id: req.params.id });
-        }
-
-        res.status(200).json({
-            message: "Ride deleted successfully",
-            deletedRide: {
-                id: req.params.id,
-                driver: ride.driver,
-                passenger: ride.passenger
-            }
-        });
-    } catch (err) {
-        console.error("Ride deletion error:", err);
-        res.status(500).json({
-            error: "Failed to delete ride",
-            details: err.message,
-            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-        });
-    }
-});
-// POST /auth/login - Authenticate user and return JWT token
-app.post('/auth/login', async (req, res) => {
-    const { username, password } = req.body;
-
-    // Validate input
-    if (!username || !password) {
-        return res.status(400).json({ error: "Username and password are required" });
-    }
-
-    try {
-        const user = await db.collection('users').findOne({ username });
-
-        if (!user || !(await bcrypt.compare(password, user.password))) {
-            return res.status(401).json({ error: "Invalid credentials" });
-        }
-
-        const token = jwt.sign(
-            { userId: user._id.toString(), role: user.role },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN }
-        );
-
-        res.status(200).json({
-            message: "Login successful",
-            token,
-            user: {
-                id: user._id.toString(),
-                username: user.username,
-                role: user.role
-            }
-        });
-    } catch (err) {
-        console.error("Login error:", err);
-        res.status(500).json({ error: "Server error during login", details: err.message });
-    }
-});
-
-//PATCH /drivers/:id/status - Update driver availability
 app.patch('/drivers/:id/status', async (req, res) => {
     try {
         if (!ObjectId.isValid(req.params.id)) {
@@ -417,38 +374,12 @@ app.patch('/drivers/:id/status', async (req, res) => {
         });
     } catch (err) {
         console.error("Driver status update error:", err);
-        res.status(500).json({ 
-            error: "Server error during status update",
-            details: err.message 
-        });
+        res.status(500).json({ error: "Server error during status update", details: err.message });
     }
 });
 
-// Enhanced admin user deletion
-app.delete('/admin/users/:id', async (req, res) => {
-    try {
-        if (!ObjectId.isValid(req.params.id)) {
-            return res.status(400).json({ error: "Invalid user ID format" });
-        }
-
-        const result = await db.collection('users').deleteOne(
-            { _id: new ObjectId(req.params.id) }
-        );
-        
-        if (result.deletedCount === 0) {
-            return res.status(404).json({ error: "User not found" });
-        }
-        
-        res.status(200).json({
-            message: "User deleted by admin",
-            id: req.params.id
-        });
-    } catch (err) {
-        console.error("Admin user deletion error:", err);
-        res.status(500).json({ error: "Failed to delete user", details: err.message });
-    }
-});
-app.get('/admin/users', authenticate, authorize(['admin']), async (req, res) => {
+// Fetch all users (admin)
+app.get('/admin/users', async (req, res) => {
     try {
         const users = await db.collection('users').find().toArray();
 
@@ -466,8 +397,9 @@ app.get('/admin/users', authenticate, authorize(['admin']), async (req, res) => 
         res.status(500).json({ error: "Failed to fetch users", details: err.message });
     }
 });
-// GET /analytics/passengers - Aggregation of passenger ride statistics
-app.get('/analytics/passengers',async (req, res) => {
+
+// Aggregation of passenger ride statistics
+app.get('/analytics/passengers', async (req, res) => {
     try {
         const pipeline = [
             { $match: { role: "passenger" } },
@@ -522,9 +454,6 @@ app.get('/analytics/passengers',async (req, res) => {
         res.status(200).json(results);
     } catch (err) {
         console.error("Aggregation error:", err);
-        res.status(500).json({ 
-            error: "Failed to perform aggregation", 
-            details: process.env.NODE_ENV === 'development' ? err.message : undefined 
-        });
+        res.status(500).json({ error: "Failed to perform aggregation", details: err.message });
     }
 });
