@@ -6,31 +6,60 @@ const saltRounds = 10;
 require('dotenv').config();
 
 const app = express();
-const port = 3000;
+const portEnv = process.env.PORT || '3000';
+const port = parseInt(portEnv);
+console.log('Detected PORT environment:', portEnv, 'Parsed PORT:', port);
+
+if (isNaN(port)) {
+    console.error('Invalid PORT value:', portEnv);
+    process.exit(1);
+}
 
 app.use(cors());
 app.use(express.json());
 
+// Root route for testing
+app.get('/', (req, res) => {
+    res.send('MyTaxi API is running on port ' + port);
+});
+
 // Database connection
 let db;
 async function connectToMongoDB() {
-    const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
-    const client = new MongoClient(uri);
+    const uri = process.env.MONGODB_URI;
+    console.log('Detected MONGODB_URI:', uri ? 'Set' : 'Not Set');
+    if (!uri) {
+        console.error('MONGODB_URI environment variable is not set');
+        process.exit(1);
+    }
+
+    const client = new MongoClient(uri, {
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 10000,
+        tls: true
+    });
 
     try {
         await client.connect();
-        console.log("Connected to MongoDB!");
+        console.log("Connected to MongoDB Atlas!");
         db = client.db("testDB");
 
         app.listen(port, () => {
             console.log(`Server running on port ${port}`);
+        }).on('error', (err) => {
+            console.error('Server failed to start:', err.message);
+            process.exit(1);
         });
     } catch (err) {
-        console.error("Error:", err);
+        console.error("MongoDB connection error:", err.message);
         process.exit(1);
     }
 }
-connectToMongoDB();
+
+connectToMongoDB().catch(err => {
+    console.error('Unexpected error during startup:', err.message);
+    process.exit(1);
+});
 
 // --- USER ROUTES ---
 
