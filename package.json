@@ -11,7 +11,7 @@
     "url": "git+https://github.com/Alvinc32/berr2243-25.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "Alvinc",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/Alvinc32/berr2243-25/issues"
@@ -24,5 +24,6 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.15.0"
-  }
+  },
+  "devDependencies": {}
 }

@@ -397,7 +397,28 @@ app.get('/admin/users', async (req, res) => {
         res.status(500).json({ error: "Failed to fetch users", details: err.message });
     }
 });
+// Backend: Add this route to handle ride deletion
+app.delete('/rides/:id', async (req, res) => {
+    try {
+        if (!ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ error: "Invalid ride ID format" });
+        }
 
+        const result = await db.collection('rides').deleteOne({ _id: new ObjectId(req.params.id) });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: "Ride not found" });
+        }
+
+        res.status(200).json({
+            message: "Ride deleted successfully",
+            id: req.params.id
+        });
+    } catch (err) {
+        console.error("Ride deletion error:", err);
+        res.status(500).json({ error: "Failed to delete ride", details: err.message });
+    }
+});
 // Aggregation of passenger ride statistics
 app.get('/analytics/passengers', async (req, res) => {
     try {
