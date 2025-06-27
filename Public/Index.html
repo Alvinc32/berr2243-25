@@ -11,6 +11,10 @@
       --admin-color: #4f46e5;
       --background: #f8fafc;
       --text-color: #1e293b;
+      --gradient: linear-gradient(135deg, #2563eb, #3b82f6);
+      --card-shadow: 0 6px 30px rgba(37, 99, 235, 0.15);
+      --dark-background: #1e293b;
+      --dark-text-color: #f8fafc;
     }
 
     * {
@@ -21,27 +25,87 @@
     }
 
     body {
-      background-color: var(--background);
+      background: linear-gradient(60deg, #f8fafc, #e0e7ff);
+      background-size: 200% 200%;
+      animation: backgroundShift 15s ease infinite, darkModeToggle 1s ease;
       color: var(--text-color);
       padding: 2rem;
+      overflow-x: hidden;
+      transition: background 0.5s ease, color 0.5s ease;
+    }
+
+    @keyframes backgroundShift {
+      0% { background-position: 0% 0%; }
+      50% { background-position: 100% 100%; }
+      100% { background-position: 0% 0%; }
+    }
+
+    @keyframes darkModeToggle {
+      0% { background: var(--dark-background); color: var(--dark-text-color); }
+      100% { background: var(--background); color: var(--text-color); }
     }
 
     .container {
       max-width: 1200px;
       margin: 0 auto;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .header {
       text-align: center;
       margin-bottom: 2rem;
+      background: var(--gradient);
+      padding: 1.5rem;
+      border-radius: 10px;
+      box-shadow: var(--card-shadow);
+      color: white;
+      animation: slideDown 0.6s ease-out;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-50px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .header h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .header h1 span {
+      animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-10px); }
+      60% { transform: translateY(-5px); }
     }
 
     .card {
       background: white;
+      border: 1px solid transparent;
       border-radius: 10px;
-      box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--card-shadow);
       padding: 1.5rem;
       margin-bottom: 2rem;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      animation: cardFadeIn 0.5s ease-out;
+    }
+
+    @keyframes cardFadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--card-shadow), 0 0 15px rgba(37, 99, 235, 0.4);
     }
 
     .form-group {
@@ -49,6 +113,13 @@
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1rem;
       margin-bottom: 1rem;
+      animation: slideIn 0.4s ease-out;
+      border-bottom: 1px solid rgba(37, 99, 235, 0.1);
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-20px); }
+      to { opacity: 1; transform: translateX(0); }
     }
 
     input,
@@ -57,28 +128,54 @@
       border: 1px solid #e2e8f0;
       border-radius: 6px;
       font-size: 1rem;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 5px rgba(37, 99, 235, 0.3);
+      outline: none;
     }
 
     button {
-      background: var(--primary-color);
+      background: var(--gradient);
       color: white;
       border: none;
       padding: 0.8rem 1.5rem;
       border-radius: 6px;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: background 0.3s ease, transform 0.2s ease;
+      font-weight: 500;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
     }
 
     button:hover {
-      background: var(--secondary-color);
+      background: linear-gradient(135deg, #1e40af, #2563eb);
+      transform: translateY(-2px);
+      animation: none;
     }
 
     button.admin {
-      background: var(--admin-color);
+      background: linear-gradient(135deg, #4f46e5, #6b21a8);
+    }
+
+    button.admin:hover {
+      background: linear-gradient(135deg, #4338ca, #6b21a8);
     }
 
     button.danger {
-      background: #dc2626;
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+    }
+
+    button.danger:hover {
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
     }
 
     .rides-table,
@@ -88,7 +185,13 @@
       background: white;
       border-radius: 10px;
       overflow: hidden;
-      box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--card-shadow);
+      animation: tableFadeIn 0.5s ease-out;
+    }
+
+    @keyframes tableFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
     .rides-table th,
@@ -98,16 +201,23 @@
       padding: 1rem;
       text-align: left;
       border-bottom: 1px solid #e2e8f0;
+      transition: background 0.3s ease, color 0.3s ease;
     }
 
     .rides-table th {
-      background: var(--primary-color);
+      background: var(--gradient);
       color: white;
     }
 
     .users-table th {
-      background: var(--admin-color);
+      background: linear-gradient(135deg, #4f46e5, #6b21a8);
       color: var(--background);
+    }
+
+    .rides-table tr:hover,
+    .users-table tr:hover {
+      background: #f1f5f9;
+      color: #1e293b;
     }
 
     .status {
@@ -115,6 +225,12 @@
       padding: 0.3rem 0.8rem;
       border-radius: 20px;
       font-size: 0.9rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .status:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 5px rgba(37, 99, 235, 0.3);
     }
 
     .status.active {
@@ -137,6 +253,12 @@
       padding: 0.2rem 0.5rem;
       border-radius: 12px;
       font-size: 0.8rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .driver-status:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 5px rgba(37, 99, 235, 0.3);
     }
 
     .driver-status.online {
@@ -165,24 +287,119 @@
       bottom: 20px;
       right: 20px;
       padding: 1rem 2rem;
-      background: var(--primary-color);
+      background: var(--gradient);
       color: white;
       border-radius: 6px;
       display: none;
       z-index: 1000;
+      animation: toastSlideIn 0.3s ease-out;
+    }
+
+    @keyframes toastSlideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
     }
 
     small {
       font-size: 0.8rem;
       color: #64748b;
     }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--secondary-color);
+      border-radius: 5px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #1e40af;
+    }
+
+    /* Loader Spinner */
+    .loader {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid var(--primary-color);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2000;
+      display: none;
+    }
+
+    @keyframes spin {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    /* Welcome Overlay */
+    .welcome-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      animation: overlayFadeIn 0.5s ease-out;
+    }
+
+    @keyframes overlayFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .welcome-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: var(--card-shadow);
+      animation: welcomePop 0.6s ease-out;
+    }
+
+    @keyframes welcomePop {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .welcome-content h2 {
+      margin-bottom: 1rem;
+      color: var(--primary-color);
+    }
+
+    .welcome-content button {
+      margin: 0.5rem;
+      animation: pulse 1.5s infinite;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+  <div class="loader" id="loader"></div>
+  <div class="welcome-overlay" id="welcomeOverlay">
+    <div class="welcome-content">
+      <h2>Welcome to MyTaxi Dashboard! 🚖</h2>
+      <p>What would you like to do?</p>
+      <button onclick="startAction('login')">Login</button>
+      <button onclick="startAction('register')">Register</button>
+    </div>
+  </div>
   <div class="container">
     <div class="header">
-      <h1>🚖 MyTaxi Dashboard</h1>
+      <h1>🚖 MyTaxi Dashboard<span>📊</span></h1>
       <p>Manage all ride requests and driver assignments</p>
     </div>
 
@@ -313,6 +530,9 @@
   <script>
     const API_URL = 'http://localhost:3000';
     const toast = document.getElementById('toast');
+    const loader = document.getElementById('loader');
+    const welcomeOverlay = document.getElementById('welcomeOverlay');
+    const container = document.querySelector('.container');
 
     let currentUserId = null;
     let currentUserRole = null;
@@ -324,8 +544,27 @@
       setTimeout(() => (toast.style.display = 'none'), duration);
     }
 
+    function showLoader() {
+      loader.style.display = 'block';
+    }
+
+    function hideLoader() {
+      loader.style.display = 'none';
+    }
+
+    function startAction(action) {
+      welcomeOverlay.style.display = 'none';
+      container.style.display = 'block';
+      if (action === 'login') {
+        document.getElementById('authForm').querySelector('button[onclick="loginUser()"]').focus();
+      } else if (action === 'register') {
+        document.getElementById('authForm').querySelector('button[onclick="registerUser()"]').focus();
+      }
+    }
+
     // Ride Management Functions
     async function fetchRides() {
+      showLoader();
       try {
         const response = await fetch(`${API_URL}/rides`);
         if (!response.ok) throw new Error('Failed to fetch rides');
@@ -334,13 +573,14 @@
       } catch (error) {
         showToast(`Error: ${error.message}`);
         return [];
+      } finally {
+        hideLoader();
       }
     }
 
     async function renderRides() {
       const rides = await fetchRides();
       const tbody = document.getElementById('ridesBody');
-
       tbody.innerHTML = rides.map((ride) => `
         <tr>
           <td>
@@ -374,6 +614,7 @@
         distance: parseFloat(document.getElementById('distance').value),
       };
 
+      showLoader();
       try {
         const response = await fetch(`${API_URL}/rides`, {
           method: 'POST',
@@ -391,6 +632,8 @@
         }
       } catch (error) {
         showToast(`Error: ${error.message}`);
+      } finally {
+        hideLoader();
       }
     });
 
@@ -400,6 +643,7 @@
         return;
       }
 
+      showLoader();
       try {
         const response = await fetch(`${API_URL}/rides/${rideId}`, {
           method: 'PATCH',
@@ -416,6 +660,8 @@
         renderRides();
       } catch (error) {
         showToast(`Error: ${error.message}`);
+      } finally {
+        hideLoader();
       }
     }
 
@@ -427,6 +673,7 @@
 
       if (!confirm('Are you sure you want to delete this ride?')) return;
 
+      showLoader();
       try {
         const response = await fetch(`${API_URL}/rides/${rideId}`, {
           method: 'DELETE',
@@ -442,6 +689,8 @@
         renderRides();
       } catch (error) {
         showToast(`Error: ${error.message}`);
+      } finally {
+        hideLoader();
       }
     }
 
@@ -451,6 +700,7 @@
       const password = document.getElementById('authPassword').value;
       const role = document.getElementById('authRole').value;
 
+      showLoader();
       try {
         const response = await fetch(`${API_URL}/users`, {
           method: 'POST',
@@ -465,6 +715,8 @@
         }
       } catch (error) {
         showToast(`Error: ${error.message}`);
+      } finally {
+        hideLoader();
       }
     }
 
@@ -472,6 +724,7 @@
       const username = document.getElementById('authUsername').value;
       const password = document.getElementById('authPassword').value;
 
+      showLoader();
       try {
         const response = await fetch(`${API_URL}/auth/login`, {
           method: 'POST',
@@ -509,6 +762,8 @@
         }
       } catch (error) {
         showToast(`Error: ${error.message}`);
+      } finally {
+        hideLoader();
       }
     }
 
@@ -517,6 +772,7 @@
     }
 
     async function loadDriverStatus() {
+      showLoader();
       try {
         const response = await fetch(`${API_URL}/users/${currentUserId}`);
         if (response.ok) {
@@ -528,12 +784,15 @@
         }
       } catch (error) {
         showToast(`Error: ${error.message}`);
+      } finally {
+        hideLoader();
       }
     }
 
     async function updateDriverStatus() {
       const availability = document.getElementById('availabilitySelect').value;
 
+      showLoader();
       try {
         const response = await fetch(`${API_URL}/drivers/${currentUserId}/status`, {
           method: 'PATCH',
@@ -550,6 +809,8 @@
         }
       } catch (error) {
         showToast(`Error: ${error.message}`);
+      } finally {
+        hideLoader();
       }
     }
 
@@ -558,6 +819,7 @@
     }
 
     async function loadAllUsers() {
+      showLoader();
       try {
         const response = await fetch(`${API_URL}/admin/users`);
         const users = await response.json();
@@ -583,12 +845,15 @@
         `).join('');
       } catch (error) {
         showToast(`Error: ${error.message}`);
+      } finally {
+        hideLoader();
       }
     }
 
     async function deleteUser(userId) {
       if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
 
+      showLoader();
       try {
         const response = await fetch(`${API_URL}/admin/users/${userId}`, {
           method: 'DELETE',
@@ -603,10 +868,13 @@
         }
       } catch (error) {
         showToast(`Error: ${error.message}`);
+      } finally {
+        hideLoader();
       }
     }
 
     async function loadPassengerAnalytics() {
+      showLoader();
       try {
         const response = await fetch(`${API_URL}/analytics/passengers`);
         const data = await response.json();
@@ -622,9 +890,11 @@
           </tr>
         `).join('');
 
-        // Fare Chart
-       
+        // Fare Chart with gradient
         const fareCtx = document.getElementById('fareChart').getContext('2d');
+        const fareGradient = fareCtx.createLinearGradient(0, 0, 0, 200);
+        fareGradient.addColorStop(0, '#3b82f6');
+        fareGradient.addColorStop(1, '#2563eb');
         window.fareChart = new Chart(fareCtx, {
           type: 'bar',
           data: {
@@ -632,23 +902,27 @@
             datasets: [{
               label: 'Total Fare (RM)',
               data: data.map((d) => d.totalFare),
-              backgroundColor: '#3b82f6',
+              backgroundColor: fareGradient,
+              borderWidth: 1,
+              borderColor: '#1e40af',
             }],
           },
           options: {
             responsive: true,
+            animation: { duration: 1000 },
             plugins: {
-              title: {
-                display: true,
-                text: 'Fare Distribution by Passenger',
-              },
+              title: { display: true, text: 'Fare Distribution by Passenger' },
+              tooltip: { backgroundColor: '#1e293b', titleColor: '#f8fafc', bodyColor: '#f8fafc' },
             },
+            scales: { y: { beginAtZero: true, title: { display: true, text: 'Fare (RM)' } } },
           },
         });
 
-        // Ride Count Chart
-        if (window.rideCountChart) window.rideCountChart.destroy();
+        // Ride Count Chart with gradient
         const rideCtx = document.getElementById('rideCountChart').getContext('2d');
+        const rideGradient = rideCtx.createLinearGradient(0, 0, 0, 200);
+        rideGradient.addColorStop(0, '#10b981');
+        rideGradient.addColorStop(1, '#047857');
         window.rideCountChart = new Chart(rideCtx, {
           type: 'bar',
           data: {
@@ -656,27 +930,32 @@
             datasets: [{
               label: 'Total Rides',
               data: data.map((d) => d.totalRides),
-              backgroundColor: '#10b981',
+              backgroundColor: rideGradient,
+              borderWidth: 1,
+              borderColor: '#065f46',
             }],
           },
           options: {
             responsive: true,
+            animation: { duration: 1000 },
             plugins: {
-              title: {
-                display: true,
-                text: 'Total Rides by Passenger',
-              },
+              title: { display: true, text: 'Total Rides by Passenger' },
+              tooltip: { backgroundColor: '#1e293b', titleColor: '#f8fafc', bodyColor: '#f8fafc' },
             },
+            scales: { y: { beginAtZero: true, title: { display: true, text: 'Number of Rides' } } },
           },
         });
       } catch (error) {
         showToast(`Error: ${error.message}`);
+      } finally {
+        hideLoader();
       }
     }
 
-    // Initial load
+    // Initial load with welcome screen
     document.addEventListener('DOMContentLoaded', () => {
-      renderRides();
+      container.style.display = 'none';
+      welcomeOverlay.style.display = 'flex';
       setInterval(renderRides, 10000);
     });
   </script>
