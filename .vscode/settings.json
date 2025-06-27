@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "/subscriptions/ba9aee00-5efb-4a2b-ab64-f979dd031d74/resourceGroups/appsvc_linux_malaysiawest/providers/Microsoft.Web/sites/MyTaxi",
+    "appService.deploySubpath": "."
+}

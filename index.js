@@ -17,7 +17,7 @@ if (isNaN(port)) {
 
 app.use(cors());
 app.use(express.json());
-
+app.use(express.static('public')); // Serve files from a 'public' folder
 // Root route for testing
 app.get('/', (req, res) => {
     res.send('MyTaxi API is running on port ' + port);
