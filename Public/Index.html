@@ -623,7 +623,7 @@
         `).join('');
 
         // Fare Chart
-        if (window.fareChart) window.fareChart.destroy();
+       
         const fareCtx = document.getElementById('fareChart').getContext('2d');
         window.fareChart = new Chart(fareCtx, {
           type: 'bar',

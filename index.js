@@ -448,7 +448,7 @@ app.delete('/rides/:id', async (req, res) => {
         res.status(500).json({ error: "Failed to delete ride", details: err.message });
     }
 });
-// Aggregation of passenger ride statistics
+
 app.get('/analytics/passengers', async (req, res) => {
     try {
         const pipeline = [
@@ -470,9 +470,7 @@ app.get('/analytics/passengers', async (req, res) => {
             {
                 $group: {
                     _id: "$username",
-                    totalRides: {
-                        $sum: { $cond: [{ $ifNull: ["$rides", false] }, 1, 0] }
-                    },
+                    totalRides: { $sum: { $cond: [{ $ifNull: ["$rides", false] }, 1, 0] } },
                     totalFare: { $sum: { $ifNull: ["$rides.fare", 0] } },
                     totalDistance: { $sum: { $ifNull: ["$rides.distance", 0] } }
                 }
